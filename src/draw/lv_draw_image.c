@@ -344,6 +344,20 @@ void lv_image_buf_get_transformed_area(lv_area_t * res, int32_t w, int32_t h, in
         return;
     }
 
+    if(angle == 0) {
+        /*Scaled only: transform the edges, not the last pixels, so w px scaled by s cover
+         *w * s px instead of (w - 1) * s + 1*/
+        lv_point_t e[2] = {{0, 0}, {w, h}};
+        lv_point_transform(&e[0], 0, scale_x, scale_y, pivot, true);
+        lv_point_transform(&e[1], 0, scale_x, scale_y, pivot, true);
+        res->x1 = LV_MIN(e[0].x, e[1].x);
+        res->y1 = LV_MIN(e[0].y, e[1].y);
+
+        res->x2 = LV_MAX(LV_MAX(e[0].x, e[1].x) - 1, res->x1);
+        res->y2 = LV_MAX(LV_MAX(e[0].y, e[1].y) - 1, res->y1);
+        return;
+    }
+
     lv_point_t p[4] = {
         {0, 0},
         {w - 1, 0},
