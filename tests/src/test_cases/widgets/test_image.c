@@ -1225,10 +1225,21 @@ void test_image_cover_check_without_background(void)
     lv_obj_update_layout(img);
     TEST_ASSERT_EQUAL(LV_COVER_RES_COVER, image_cover_check(img, 250, 200, 290, 250));
 
-    /* Rounded corners don't cover */
+    /* The radius is applied to each tile, so a tiled image with a radius doesn't cover */
     lv_obj_set_style_radius(img, 30, LV_PART_MAIN);
+    TEST_ASSERT_EQUAL(LV_COVER_RES_NOT_COVER, image_cover_check(img, 150, 150, 250, 200));
+
+    /* Rounded corners don't cover, the rest of the image does */
+    lv_image_set_inner_align(img, LV_IMAGE_ALIGN_TOP_LEFT);
+    lv_obj_update_layout(img);
     TEST_ASSERT_EQUAL(LV_COVER_RES_NOT_COVER, image_cover_check(img, 100, 100, 110, 110));
-    TEST_ASSERT_EQUAL(LV_COVER_RES_COVER, image_cover_check(img, 150, 150, 250, 200));
+    TEST_ASSERT_EQUAL(LV_COVER_RES_COVER, image_cover_check(img, 130, 130, 189, 169));
+    lv_obj_set_style_radius(img, 0, LV_PART_MAIN);
+
+    /* Color keyed pixels are transparent, so a color keyed image doesn't cover */
+    static const lv_image_colorkey_t colorkey = {.low = {0, 0, 0}, .high = {0, 0, 0}};
+    lv_obj_set_style_image_colorkey(img, &colorkey, LV_PART_MAIN);
+    TEST_ASSERT_EQUAL(LV_COVER_RES_NOT_COVER, image_cover_check(img, 110, 110, 189, 169));
 
     lv_obj_delete(img);
     lv_draw_buf_destroy(buf);
