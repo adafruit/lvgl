@@ -782,6 +782,36 @@ static void LV_ATTRIBUTE_FAST_MEM indexed_image_blend(lv_draw_sw_blend_image_dsc
     uint8_t bpp = lv_color_format_get_bpp(dsc->src_color_format);
     int32_t src_x_offset = dsc->src_x_offset;
 
+    /*With an opaque palette, full opacity, no mask and normal blending every pixel is a plain
+     *copy of its palette color. Convert the palette to RGB565 once and look the pixels up.*/
+    if(mask_buf == NULL && opa >= LV_OPA_MAX && dsc->blend_mode == LV_BLEND_MODE_NORMAL) {
+        uint16_t lut[256];
+        uint32_t palette_size = 1u << bpp;
+        uint32_t i;
+        for(i = 0; i < palette_size; i++) {
+            if(palette[i].alpha < LV_OPA_MAX) break;
+            lut[i] = LV_COLOR_24_TO_16((const uint8_t *)&palette[i]);
+        }
+        if(i == palette_size) {
+            for(int32_t y = 0; y < h; y++) {
+                if(bpp == 8) {
+                    const uint8_t * src_row = src_buf + src_x_offset;
+                    for(int32_t dest_x = 0; dest_x < w; dest_x++) {
+                        dest_buf_u16[dest_x] = lut[src_row[dest_x]];
+                    }
+                }
+                else {
+                    for(int32_t dest_x = 0; dest_x < w; dest_x++) {
+                        dest_buf_u16[dest_x] = lut[lv_color_indexed_get(src_buf, src_x_offset + dest_x, bpp)];
+                    }
+                }
+                dest_buf_u16 = drawbuf_next_row(dest_buf_u16, dest_stride);
+                src_buf = drawbuf_next_row(src_buf, src_stride);
+            }
+            return;
+        }
+    }
+
     for(int32_t y = 0; y < h; y++) {
         for(int32_t dest_x = 0; dest_x < w; dest_x++) {
             lv_color32_t src = palette[lv_color_indexed_get(src_buf, src_x_offset + dest_x, bpp)];
